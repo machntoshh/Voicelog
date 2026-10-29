@@ -4,6 +4,7 @@ import '../format.dart';
 import '../services/recorder_controller.dart';
 import 'app_scope.dart';
 import 'dialogs.dart';
+import 'mic_picker.dart';
 import 'theme.dart';
 import 'waveform.dart';
 
@@ -14,9 +15,11 @@ class RecorderBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rec = AppScope.of(context).recorder;
+    final scope = AppScope.of(context);
+    final rec = scope.recorder;
     return ListenableBuilder(
-      listenable: rec,
+      // The store too, so the microphone label follows the user's choice.
+      listenable: Listenable.merge([rec, scope.store]),
       builder: (context, _) {
         final active = rec.phase == RecorderPhase.recording ||
             rec.phase == RecorderPhase.paused ||
@@ -53,8 +56,30 @@ class _IdleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final starting = rec.phase == RecorderPhase.starting;
-    return Center(
+    final micLabel = AppScope.of(context).store.settings.inputDeviceLabel ?? 'Microfone padrão';
+    return Row(
       key: const ValueKey('idle'),
+      children: [
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            heightFactor: 1,
+            child: TextButton.icon(
+              onPressed: starting ? null : () => showMicPicker(context),
+              icon: const Icon(Icons.settings_voice_outlined, size: 18),
+              label: Text(micLabel, maxLines: 1, overflow: TextOverflow.ellipsis),
+              style: TextButton.styleFrom(foregroundColor: VL.textDim),
+            ),
+          ),
+        ),
+        _recordButton(context, starting),
+        const Expanded(child: SizedBox()),
+      ],
+    );
+  }
+
+  Widget _recordButton(BuildContext context, bool starting) {
+    return Center(
       heightFactor: 1,
       child: Semantics(
         button: true,
@@ -95,6 +120,12 @@ class _ActiveControls extends StatelessWidget {
   Widget build(BuildContext context) {
     final paused = rec.phase == RecorderPhase.paused;
     final stopping = rec.phase == RecorderPhase.stopping;
+    final silent = rec.noSignal && !paused;
+    final (status, statusColor) = paused
+        ? ('PAUSADO', VL.warning)
+        : silent
+            ? ('SEM SOM', VL.warning)
+            : ('GRAVANDO', VL.red);
     return SizedBox(
       key: const ValueKey('active'),
       height: 62,
@@ -105,9 +136,8 @@ class _ActiveControls extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(paused ? 'PAUSADO' : 'GRAVANDO',
-                style: TextStyle(
-                    fontSize: 11, letterSpacing: 1.4, color: paused ? VL.warning : VL.red, fontWeight: FontWeight.w600)),
+            Text(status,
+                style: TextStyle(fontSize: 11, letterSpacing: 1.4, color: statusColor, fontWeight: FontWeight.w600)),
             Text(formatDuration(rec.elapsed),
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500, fontFeatures: VL.tabular)),
           ],
@@ -116,13 +146,23 @@ class _ActiveControls extends StatelessWidget {
         Expanded(
           child: SizedBox(
             height: 40,
-            child: CustomPaint(
-              painter: WaveformPainter(
-                levels: rec.levels,
-                alignRight: true,
-                activeColor: paused ? VL.textFaint : VL.red,
-              ),
-            ),
+            child: silent
+                ? const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'O microfone não está captando som. Confira o microfone escolhido.',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: VL.warning, fontSize: 12.5, height: 1.25),
+                    ),
+                  )
+                : CustomPaint(
+                    painter: WaveformPainter(
+                      levels: rec.levels,
+                      alignRight: true,
+                      activeColor: paused ? VL.textFaint : VL.red,
+                    ),
+                  ),
           ),
         ),
         const SizedBox(width: 12),

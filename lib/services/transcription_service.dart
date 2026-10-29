@@ -30,7 +30,7 @@ class TranscriptionService extends ChangeNotifier {
   /// Progress of [current]: null while decoding, then 0–1.
   double? progress;
 
-  WhisperModel? get model => whisperModelById(store.transcription.modelId);
+  WhisperModel? get model => whisperModelById(store.settings.modelId);
 
   /// Re-queues work left pending by a previous session.
   void resumePending() {
@@ -53,26 +53,26 @@ class TranscriptionService extends ChangeNotifier {
 
   /// Called for each newly saved recording.
   void onRecordingSaved(Recording r) {
-    if (store.transcription.autoTranscribe) request(r);
+    if (store.settings.autoTranscribe) request(r);
   }
 
   Future<void> useModel(WhisperModel m) async {
-    store.transcription.modelId = m.id;
-    await store.saveTranscriptionSettings();
+    store.settings.modelId = m.id;
+    await store.saveSettings();
     notifyListeners();
   }
 
   Future<void> removeModel() async {
     final m = model;
     if (m != null) await downloader.delete(m);
-    store.transcription.modelId = null;
-    await store.saveTranscriptionSettings();
+    store.settings.modelId = null;
+    await store.saveSettings();
     notifyListeners();
   }
 
   Future<void> setAutoTranscribe(bool on) async {
-    store.transcription.autoTranscribe = on;
-    await store.saveTranscriptionSettings();
+    store.settings.autoTranscribe = on;
+    await store.saveSettings();
     notifyListeners();
   }
 

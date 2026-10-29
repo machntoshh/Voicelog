@@ -89,7 +89,7 @@ class _TranscriptionSettingsState extends State<_TranscriptionSettings> {
       listenable: Listenable.merge([_service, _service.downloader]),
       builder: (context, _) {
         final active = _service.model?.id;
-        final settings = _service.store.transcription;
+        final settings = _service.store.settings;
         return AlertDialog(
           title: const Text('Transcrição'),
           content: SizedBox(

@@ -2,8 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 
-/// Talks to the Android foreground service that keeps recording alive with
-/// the screen locked or the app in the background. A no-op on desktop.
+/// Native helpers on channel `voicelog/recording`: on Android, the foreground
+/// service that keeps recording alive in the background; on Windows, the
+/// default recording device.
 class PlatformBridge {
   const PlatformBridge();
 
@@ -36,5 +37,12 @@ class PlatformBridge {
   Future<int?> freeBytes(String path) async {
     if (!_android) return null;
     return _channel.invokeMethod<int>('freeBytes', {'path': path});
+  }
+
+  /// Windows only: id of the "default recording device" from the sound
+  /// settings. Elsewhere null, which lets the platform pick its default.
+  Future<String?> defaultInputDeviceId() async {
+    if (!Platform.isWindows) return null;
+    return _channel.invokeMethod<String>('defaultInputDeviceId');
   }
 }

@@ -21,6 +21,11 @@ class RecordingResult {
 }
 
 const _minFreeBytes = 50 * 1024 * 1024;
+
+// Below -90 dBFS is digital silence; even a quiet room measures around -60.
+const _silenceDb = -90.0;
+// Amplitude arrives every 100 ms, so 30 samples is 3 seconds.
+const _silenceSamples = 30;
 const _waveformBars = 72;
 
 /// Records AAC/ADTS audio straight to disk. The app-wide instance outlives
@@ -54,6 +59,31 @@ class RecorderController extends ChangeNotifier {
   Duration get elapsed => _clock.elapsed;
   bool get isActive => phase != RecorderPhase.idle;
 
+  /// True while the microphone delivers digital silence, the signature of a
+  /// muted, disconnected or virtual device (not of a quiet room, which still
+  /// has some noise).
+  bool noSignal = false;
+  int _silentSamples = 0;
+
+  /// Microphones the user can pick from.
+  Future<List<InputDevice>> inputDevices() => _rec.listInputDevices();
+
+  /// The user's chosen microphone if it is connected, else the system
+  /// default recording device. Also returns a warning when the chosen one
+  /// is missing.
+  Future<(InputDevice?, String?)> _inputDevice() async {
+    final settings = store.settings;
+    String? warning;
+    if (settings.inputDeviceId case final id?) {
+      final match = (await inputDevices()).where((d) => d.id == id).firstOrNull;
+      if (match != null) return (match, null);
+      warning = 'O microfone "${settings.inputDeviceLabel ?? id}" não está conectado. '
+          'Gravando com o microfone padrão.';
+    }
+    final defaultId = await bridge.defaultInputDeviceId().catchError((Object _) => null);
+    return (defaultId == null ? null : InputDevice(id: defaultId, label: ''), warning);
+  }
+
   /// Starts recording. Returns a user-facing error message, or null.
   Future<String?> start() async {
     if (phase != RecorderPhase.idle) return null;
@@ -75,19 +105,24 @@ class RecorderController extends ChangeNotifier {
       _file = await store.audioFile(r).open(mode: FileMode.write);
       levels.clear();
       _peaks.clear();
+      noSignal = false;
+      _silentSamples = 0;
 
-      String? warning;
+      final warnings = <String>[];
       try {
         await bridge.startService();
       } on Object {
-        warning = 'Não foi possível manter a gravação em segundo plano. Mantenha o app aberto.';
+        warnings.add('Não foi possível manter a gravação em segundo plano. Mantenha o app aberto.');
       }
 
-      final stream = await _rec.startStream(const RecordConfig(
+      final (device, deviceWarning) = await _inputDevice();
+      if (deviceWarning != null) warnings.add(deviceWarning);
+      final stream = await _rec.startStream(RecordConfig(
         encoder: AudioEncoder.aacLc,
         sampleRate: 44100,
         numChannels: 1,
         bitRate: 64000,
+        device: device,
         audioInterruption: AudioInterruptionMode.pause,
       ));
       _streamDone = Completer();
@@ -100,7 +135,7 @@ class RecorderController extends ChangeNotifier {
         ..start();
       _ticker = Timer.periodic(const Duration(milliseconds: 250), (_) => notifyListeners());
       _setPhase(RecorderPhase.recording);
-      return warning;
+      return warnings.isEmpty ? null : warnings.join(' ');
     } on Object catch (e) {
       await _abortStart();
       return 'Não foi possível iniciar a gravação: $e';
@@ -126,6 +161,8 @@ class RecorderController extends ChangeNotifier {
 
   void _onAmplitude(Amplitude a) {
     if (phase != RecorderPhase.recording) return;
+    _silentSamples = a.current < _silenceDb ? _silentSamples + 1 : 0;
+    noSignal = _silentSamples >= _silenceSamples;
     final level = ((a.current + 50) / 50).clamp(0.0, 1.0);
     levels.add(level);
     if (levels.length > 120) levels.removeAt(0);

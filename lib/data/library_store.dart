@@ -22,16 +22,28 @@ class SearchHit {
   final Duration? at;
 }
 
-class TranscriptionSettings {
+class AppSettings {
   /// Installed Whisper model id; null while transcription is off.
   String? modelId;
   bool autoTranscribe = false;
 
-  Map<String, Object?> toJson() => {'modelId': modelId, 'autoTranscribe': autoTranscribe};
+  /// Microphone chosen by the user; null means the system default.
+  /// The label is kept to name the device when it is unplugged.
+  String? inputDeviceId;
+  String? inputDeviceLabel;
+
+  Map<String, Object?> toJson() => {
+        'modelId': modelId,
+        'autoTranscribe': autoTranscribe,
+        'inputDeviceId': inputDeviceId,
+        'inputDeviceLabel': inputDeviceLabel,
+      };
 
   void readJson(Map<String, Object?>? j) {
     modelId = j?['modelId'] as String?;
     autoTranscribe = j?['autoTranscribe'] as bool? ?? false;
+    inputDeviceId = j?['inputDeviceId'] as String?;
+    inputDeviceLabel = j?['inputDeviceLabel'] as String?;
   }
 }
 
@@ -46,7 +58,7 @@ class LibraryStore extends ChangeNotifier {
   final Directory root;
   final List<Folder> folders = [];
   final List<Recording> recordings = [];
-  final transcription = TranscriptionSettings();
+  final settings = AppSettings();
 
   /// Recordings rescued by the last [load]; the UI reports it once.
   int recoveredOnLoad = 0;
@@ -80,7 +92,7 @@ class LibraryStore extends ChangeNotifier {
       if (data == null) continue;
       folders.addAll([for (final j in data['folders'] as List) Folder.fromJson(j as Map<String, Object?>)]);
       recordings.addAll([for (final j in data['recordings'] as List) Recording.fromJson(j as Map<String, Object?>)]);
-      transcription.readJson(data['settings'] as Map<String, Object?>?);
+      settings.readJson(data['settings'] as Map<String, Object?>?);
       break;
     }
 
@@ -175,7 +187,7 @@ class LibraryStore extends ChangeNotifier {
       'version': 1,
       'folders': [for (final f in folders) f.toJson()],
       'recordings': [for (final r in recordings) r.toJson()],
-      'settings': transcription.toJson(),
+      'settings': settings.toJson(),
     });
     final write = _pending.then((_) => _writeAtomically(data));
     _pending = write.catchError((Object _) {});
@@ -262,7 +274,15 @@ class LibraryStore extends ChangeNotifier {
 
   // ---------------------------------------------------------------- transcription
 
-  Future<void> saveTranscriptionSettings() => _persist();
+  Future<void> saveSettings() => _persist();
+
+  /// Remembers the microphone to record from; null id means system default.
+  Future<void> setInputDevice({String? id, String? label}) {
+    settings
+      ..inputDeviceId = id
+      ..inputDeviceLabel = id == null ? null : label;
+    return _persist();
+  }
 
   Future<void> setTranscriptStatus(Recording r, TranscriptStatus status, {String? error}) {
     r

@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:voicelog/data/library_store.dart';
 import 'package:voicelog/models.dart';
+import 'package:voicelog/services/platform_bridge.dart';
 import 'package:voicelog/services/recorder_controller.dart';
 import 'package:voicelog/services/transcription_service.dart';
 
@@ -66,4 +67,27 @@ void main() {
       rec.dispose();
     });
   });
+
+  // Regression: without an explicit device, Windows recorded from the default
+  // *communications* microphone, which can be a silent virtual device.
+  testWidgets('Windows: records from the default recording device and hears sound', (tester) async {
+    await tester.runAsync(() async {
+      final root = await Directory.systemTemp.createTemp('voicelog_it_mic');
+      addTearDown(() => root.delete(recursive: true));
+      final store = LibraryStore(root);
+      await store.load();
+      final rec = RecorderController(store);
+
+      final defaultId = await const PlatformBridge().defaultInputDeviceId();
+      expect(defaultId, isNotNull);
+      final devices = await rec.inputDevices();
+      expect(devices.map((d) => d.id), contains(defaultId));
+
+      expect(await rec.start(), isNull);
+      await Future<void>.delayed(const Duration(seconds: 5));
+      expect(rec.noSignal, isFalse, reason: 'default microphone delivered digital silence');
+      await rec.stop();
+      rec.dispose();
+    });
+  }, skip: !Platform.isWindows);
 }

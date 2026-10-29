@@ -1,8 +1,47 @@
 #include "flutter_window.h"
 
+#include <flutter/standard_method_codec.h>
+#include <mmdeviceapi.h>
+#include <windows.h>
+
 #include <optional>
+#include <string>
 
 #include "flutter/generated_plugin_registrant.h"
+
+namespace {
+
+// Endpoint id of the device chosen as "default recording device" in the
+// Windows sound settings, or empty if there is none.
+//
+// The recording plugin, when given no device, uses the default
+// *communications* device instead, which is often a virtual microphone
+// (webcam apps, meeting tools) that only delivers silence.
+std::string DefaultCaptureDeviceId() {
+  std::string result;
+  IMMDeviceEnumerator* enumerator = nullptr;
+  if (FAILED(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+                              IID_PPV_ARGS(&enumerator)))) {
+    return result;
+  }
+  IMMDevice* device = nullptr;
+  if (SUCCEEDED(enumerator->GetDefaultAudioEndpoint(eCapture, eConsole, &device))) {
+    LPWSTR id = nullptr;
+    if (SUCCEEDED(device->GetId(&id)) && id) {
+      int size = WideCharToMultiByte(CP_UTF8, 0, id, -1, nullptr, 0, nullptr, nullptr);
+      if (size > 1) {
+        result.resize(size - 1);
+        WideCharToMultiByte(CP_UTF8, 0, id, -1, result.data(), size, nullptr, nullptr);
+      }
+      CoTaskMemFree(id);
+    }
+    device->Release();
+  }
+  enumerator->Release();
+  return result;
+}
+
+}  // namespace
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
@@ -25,6 +64,19 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+
+  recording_channel_ = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+      flutter_controller_->engine()->messenger(), "voicelog/recording",
+      &flutter::StandardMethodCodec::GetInstance());
+  recording_channel_->SetMethodCallHandler([](const auto& call, auto result) {
+    if (call.method_name() == "defaultInputDeviceId") {
+      std::string id = DefaultCaptureDeviceId();
+      result->Success(id.empty() ? flutter::EncodableValue() : flutter::EncodableValue(id));
+    } else {
+      result->NotImplemented();
+    }
+  });
+
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
@@ -40,6 +92,8 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  // The channel holds the engine's messenger; release it before the engine.
+  recording_channel_ = nullptr;
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
   }

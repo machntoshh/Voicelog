@@ -183,13 +183,26 @@ void main() {
 
   test('transcription settings persist', () async {
     final s = await open();
-    s.transcription
+    s.settings
       ..modelId = 'whisper-small'
       ..autoTranscribe = true;
-    await s.saveTranscriptionSettings();
+    await s.saveSettings();
 
     final reopened = await open();
-    expect(reopened.transcription.modelId, 'whisper-small');
-    expect(reopened.transcription.autoTranscribe, isTrue);
+    expect(reopened.settings.modelId, 'whisper-small');
+    expect(reopened.settings.autoTranscribe, isTrue);
+  });
+
+  test('the chosen microphone persists, and resetting it clears the label', () async {
+    final s = await open();
+    await s.setInputDevice(id: r'{0.0.1.00000000}.{abc}', label: 'Headset (USB)');
+
+    final reopened = await open();
+    expect(reopened.settings.inputDeviceId, r'{0.0.1.00000000}.{abc}');
+    expect(reopened.settings.inputDeviceLabel, 'Headset (USB)');
+
+    await reopened.setInputDevice(id: null, label: 'ignored');
+    expect(reopened.settings.inputDeviceId, isNull);
+    expect(reopened.settings.inputDeviceLabel, isNull);
   });
 }

@@ -87,6 +87,19 @@ void main() {
     expect(passage, findsOneWidget);
   });
 
+  testWidgets('the record bar names the microphone in use', (tester) async {
+    await pump(tester, const Size(400, 800));
+    expect(find.text('Microfone padrão'), findsOneWidget);
+
+    final store = (tester.widget(find.byType(VoiceLogApp)) as VoiceLogApp).store;
+    store.settings
+      ..inputDeviceId = 'usb-1'
+      ..inputDeviceLabel = 'Headset (USB)';
+    store.notifyListeners();
+    await tester.pump();
+    expect(find.text('Headset (USB)'), findsOneWidget);
+  });
+
   testWidgets('third-party licenses open from the transcription settings, in Portuguese', (tester) async {
     await pump(tester, const Size(1200, 800));
     await tester.tap(find.byTooltip('Transcrição'));
