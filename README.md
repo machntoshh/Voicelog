@@ -23,18 +23,18 @@ Acesse a página **[Releases](https://github.com/machntoshh/Voicelog/releases/la
 
 | Para | Arquivo |
 |---|---|
-| 💻 **Windows** 10 ou 11 | `VoiceLog-Setup-1.0.0.exe` |
-| 📱 **Android** 7 ou mais recente | `VoiceLog-1.0.0.apk` |
+| 💻 **Windows** 10 ou 11 | `VoiceLog-Setup-1.0.1.exe` |
+| 📱 **Android** 7 ou mais recente | `VoiceLog-1.0.1.apk` |
 
 ### Instalar no Windows
 
-1. Dê dois cliques em `VoiceLog-Setup-1.0.0.exe` e siga os passos. Não pede senha de administrador.
+1. Dê dois cliques em `VoiceLog-Setup-1.0.1.exe` e siga os passos. Não pede senha de administrador.
 2. Se aparecer **"O Windows protegeu o seu PC"**, clique em **Mais informações** e depois em **Executar assim mesmo**. O aviso aparece porque o app ainda não tem assinatura digital paga.
 3. Pronto: o VoiceLog fica no menu Iniciar. Para deixá-lo na barra de tarefas, clique com o botão direito no ícone e escolha **Fixar na barra de tarefas**.
 
 ### Instalar no Android
 
-1. No celular, abra esta página e baixe `VoiceLog-1.0.0.apk`.
+1. No celular, abra esta página e baixe `VoiceLog-1.0.1.apk`.
 2. Toque no arquivo baixado. Se o celular pedir, permita **instalar apps desta fonte** (o navegador ou o app de arquivos).
 3. Se o Google Play Protect avisar que o app é desconhecido, toque em **Instalar mesmo assim**. O app ainda não está na Play Store.
 4. Na primeira gravação, permita o uso do **microfone** e das **notificações**.

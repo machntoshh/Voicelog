@@ -138,7 +138,13 @@ class _TranscriptionSettingsState extends State<_TranscriptionSettings> {
               ),
             ),
           ),
-          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Fechar'))],
+          actions: [
+            TextButton(
+              onPressed: () => showLicensePage(context: context, applicationName: 'VoiceLog'),
+              child: const Text('Licenças de terceiros'),
+            ),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Fechar')),
+          ],
         );
       },
     );

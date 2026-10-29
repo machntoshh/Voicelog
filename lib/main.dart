@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'data/library_store.dart';
+import 'licenses.dart';
 import 'services/recorder_controller.dart';
 import 'services/transcription_service.dart';
 import 'ui/app_scope.dart';
@@ -12,6 +14,7 @@ import 'ui/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  registerThirdPartyLicenses();
   try {
     final docs = await getApplicationDocumentsDirectory();
     final store = LibraryStore(Directory('${docs.path}${Platform.pathSeparator}VoiceLog'));
@@ -39,6 +42,9 @@ class VoiceLogApp extends StatelessWidget {
           title: 'VoiceLog',
           debugShowCheckedModeBanner: false,
           theme: buildTheme(),
+          locale: const Locale('pt', 'BR'),
+          supportedLocales: const [Locale('pt', 'BR')],
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
           home: const HomePage(),
         ),
       );

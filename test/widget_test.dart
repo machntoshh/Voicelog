@@ -86,4 +86,14 @@ void main() {
         of: find.byType(RecordingTile), matching: find.textContaining('fornecedor', findRichText: true));
     expect(passage, findsOneWidget);
   });
+
+  testWidgets('third-party licenses open from the transcription settings, in Portuguese', (tester) async {
+    await pump(tester, const Size(1200, 800));
+    await tester.tap(find.byTooltip('Transcrição'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Licenças de terceiros'));
+    await tester.pumpAndSettle();
+    expect(find.text('Licenças'), findsWidgets);
+    expect(find.text('VoiceLog'), findsWidgets);
+  });
 }
